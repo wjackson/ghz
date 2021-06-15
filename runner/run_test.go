@@ -10,6 +10,7 @@ import (
 	"github.com/bojand/ghz/internal"
 	"github.com/bojand/ghz/internal/helloworld"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/uuid"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/dynamic"
@@ -454,6 +455,30 @@ func TestRunUnary(t *testing.T) {
 
 		connCount := gs.GetConnectionCount()
 		assert.Equal(t, 1, connCount)
+	})
+
+	t.Run("test binary with bytes field", func(t *testing.T) {
+		gs.ResetCounters()
+
+		msg := &wrappers.BytesValue{}
+		msg.Value = []byte{'\x7b', '\x7b', '\xc2', '\x7d', '\x7d'}
+
+		binData, err := proto.Marshal(msg)
+		assert.NoError(t, err)
+
+		_, err = Run(
+			"helloworld.Greeter.SayHello",
+			internal.TestLocalhost,
+			WithProtoFile("../testdata/greeter.proto", []string{}),
+			WithTotalRequests(5),
+			WithConcurrency(1),
+			WithTimeout(time.Duration(20*time.Second)),
+			WithDialTimeout(time.Duration(20*time.Second)),
+			WithBinaryData(binData),
+			WithInsecure(true),
+		)
+
+		assert.NoError(t, err)
 	})
 
 	t.Run("test binary with func", func(t *testing.T) {
